@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.9";
+const CARD_VERSION = "0.1.0";
 
 const DEFAULTS = {
   title: "",

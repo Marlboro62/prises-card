@@ -29,7 +29,7 @@
 # Carte Prises
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![Release](https://img.shields.io/github/v/release/Marlboro62/prises-card?include_prereleases)](https://github.com/Marlboro62/prises-card/releases)
+[![Release](https://img.shields.io/github/v/release/Marlboro62/prises-card)](https://github.com/Marlboro62/prises-card/releases)
 
 **Toutes vos prises connectées, rangées par pièce**, dans une carte Lovelace au style des cartes MyElectricalData new ([Carte Enedis Linky New](https://github.com/Marlboro62/content-card-linky-new)), des [Cartes Serveur HA](https://github.com/Marlboro62/serveur-ha-card) et de la [Carte Lumières](https://github.com/Marlboro62/lumieres-card) : thème bleu nuit, version claire, ou thème Home Assistant.
 
@@ -148,6 +148,9 @@ Clés d'une prise : `entity`, `name`, `icon`, `power`, `energy`, `voltage`, `cur
 ### 0.1.0
 
 - ✨ Première version : prises par pièce, puissance, énergie, tension et courant, puissance totale, barre de charge, appui sur la prise validé par un second appui, prises verrouillées, tri par puissance, thèmes bleu nuit, clair et Home Assistant, français, anglais et polonais.
+- ✨ Affichage en **boutons** (`layout: buttons`), couleur selon la puissance du vert au rouge (`max_power`, 2 500 W par défaut, réglable par prise).
+- ✨ Noms courts (sans la pièce ni « Prise »), une seule pièce sans cadre, option `show_header` pour poser la carte sous une autre, pleine largeur dans les sections.
+- 🐛 Une prise verrouillée ne peut plus être allumée ou éteinte depuis la fiche ; éditeur visuel plus clair.
 
 Détail de chaque version : [releases](https://github.com/Marlboro62/prises-card/releases).
 
