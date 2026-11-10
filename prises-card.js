@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.7";
+const CARD_VERSION = "0.1.0-beta.8";
 
 const DEFAULTS = {
   title: "",
@@ -20,6 +20,7 @@ const DEFAULTS = {
   confirm: true,
   sort: "name",
   layout: "list",
+  show_header: true,
   max_power: 2500,
   theme: "v2",
   language: "auto",
@@ -54,28 +55,31 @@ const I18N = {
 const EDITOR_LABELS = {
   fr: { title: "Titre (Prises par défaut)", icon: "Icône", entities: "Prises (trouvées seules si vide)", areas: "Pièces affichées (toutes si vide)",
     exclude: "Prises à masquer", locked: "Prises verrouillées (pas de bouton)", show_off: "Afficher les prises éteintes",
-    show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce", layout: "Affichage",
+    show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce", layout: "Affichage", show_header: "Afficher l'en-tête (titre et icône)",
     max_power: "Seuil du rouge (W)", theme: "Couleurs de la carte", language: "Langue" },
   en: { title: "Title (Plugs by default)", icon: "Icon", entities: "Plugs (found automatically if empty)", areas: "Rooms shown (all if empty)",
     exclude: "Plugs to hide", locked: "Locked plugs (no button)", show_off: "Show plugs that are off",
-    show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room", layout: "Layout",
+    show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room", layout: "Layout", show_header: "Show the header (title and icon)",
     max_power: "Red threshold (W)", theme: "Card colours", language: "Language" },
   pl: { title: "Tytuł (domyślnie Gniazdka)", icon: "Ikona", entities: "Gniazdka (wykrywane, jeśli puste)", areas: "Pokazane pomieszczenia (wszystkie, jeśli puste)",
     exclude: "Ukryte gniazdka", locked: "Zablokowane gniazdka (bez przycisku)", show_off: "Pokaż wyłączone gniazdka",
-    show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu", layout: "Układ",
+    show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu", layout: "Układ", show_header: "Pokaż nagłówek (tytuł i ikona)",
     max_power: "Próg czerwieni (W)", theme: "Kolory karty", language: "Język" },
 };
 
 const EDITOR_HELP = {
   fr: { max_power: "Vert à 0 W, jaune à mi-chemin, rouge à cette puissance. 2500 W par défaut.", sort: "Par défaut : par nom.",
     layout: "Par défaut : liste.", theme: "Par défaut : bleu nuit.", language: "Par défaut : langue de Home Assistant.",
-    locked: "Affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre." },
+    locked: "Affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre.",
+    show_header: "Décoché : une ligne discrète avec la puissance totale, pour poser la carte sous une autre." },
   en: { max_power: "Green at 0 W, yellow halfway, red at this power. 2500 W by default.", sort: "Default: by name.",
     layout: "Default: list.", theme: "Default: night blue.", language: "Default: Home Assistant language.",
-    locked: "Shown with their measurements, with no way to turn them on or off." },
+    locked: "Shown with their measurements, with no way to turn them on or off.",
+    show_header: "Unchecked: a discreet line with the total power, to place the card under another one." },
   pl: { max_power: "Zielony przy 0 W, żółty w połowie, czerwony przy tej mocy. Domyślnie 2500 W.", sort: "Domyślnie: według nazwy.",
     layout: "Domyślnie: lista.", theme: "Domyślnie: granatowy.", language: "Domyślnie: język Home Assistant.",
-    locked: "Pokazane z pomiarami, bez możliwości włączenia lub wyłączenia." },
+    locked: "Pokazane z pomiarami, bez możliwości włączenia lub wyłączenia.",
+    show_header: "Odznaczone: dyskretna linia z mocą łączną, aby umieścić kartę pod inną." },
 };
 /** Langue de l'interface pour l'éditeur (Home Assistant ne lui passe pas toujours hass). */
 const uiLang = () => String(document.querySelector("home-assistant")?.hass?.locale?.language || navigator.language || "fr").slice(0, 2);
@@ -153,6 +157,7 @@ class PrisesCard extends HTMLElement {
             { value: "name", label: "Nom" }, { value: "power", label: "Puissance" }] } } },
         ] },
         { name: "max_power", selector: { number: { min: 100, max: 10000, step: 50, mode: "box", unit_of_measurement: "W" } } },
+        { name: "show_header", selector: { boolean: {} } },
         { name: "theme", selector: { select: { mode: "dropdown", options: [
           { value: "v2", label: "Bleu nuit (style MyElectricalData)" },
           { value: "auto", label: "Bleu nuit, clair si Home Assistant est en mode clair" },
@@ -418,7 +423,9 @@ class PrisesCard extends HTMLElement {
     const on = shown.filter((p) => this._hass.states[p.id].state === "on");
     const watts = shown.map((p) => this._watts(p)).filter((w) => w !== null);
     const total = watts.reduce((a, b) => a + b, 0);
-    const head = `<header>
+    // sans en-tête (show_header: false) : une ligne discrète, pour une carte posée sous une autre
+    const head = c.show_header === false ? `<div class="mini"><span>${esc(on.length ? this._fmt("n_on", { n: on.length }) : T.none_on)}</span>
+      ${watts.length ? `<span class="pc-total" title="${esc(T.total)}"><ha-icon icon="mdi:flash"></ha-icon><b>${esc(this._w(total))}</b></span>` : ""}</div>` : `<header>
       <div class="brand"><span class="logo${on.length ? " on" : ""}"><ha-icon icon="${esc(c.icon || DEFAULTS.icon)}"></ha-icon></span>
         <div><div class="title">${esc(c.title || T.title)}</div>
         <div class="sub">${esc(on.length ? this._fmt("n_on", { n: on.length }) : T.none_on)}</div></div></div>
@@ -548,6 +555,9 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .logo.on { background: color-mix(in srgb, var(--med-accent) 20%, transparent); }
 .logo.on ha-icon { color: var(--med-accent); }
 .title { font-size: 1.12rem; font-weight: 700; }
+.mini { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; padding: 10px 14px 8px; font-size: .78rem; color: var(--med-muted); }
+.mini .pc-total { padding: 3px 10px; color: var(--med-text); }
+.mini .pc-total b { font-size: .82rem; }
 .sub { font-size: .78rem; color: var(--med-muted); }
 .pc-total { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; border: 1px solid var(--med-line); background: var(--med-surface); padding: 6px 12px; }
 .pc-total ha-icon { --mdc-icon-size: 18px; color: var(--pc-warn); }

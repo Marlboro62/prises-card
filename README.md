@@ -106,6 +106,7 @@ Si un interrupteur est pris pour une prise à tort, masquez-le avec `exclude`. S
 | `areas` | Pièces affichées, dans cet ordre (identifiants de zone) | toutes |
 | `exclude` | Prises à masquer | aucune |
 | `locked` | Prises sans bouton marche / arrêt | aucune |
+| `show_header` | En-tête avec titre et icône ; `false` : une ligne discrète (prises allumées, puissance totale), pour poser la carte sous une autre | `true` |
 | `show_off` | Afficher les prises éteintes | `true` |
 | `show_details` | Afficher tension et courant | `true` |
 | `confirm` | Valider d'un second appui (allumer et éteindre) ; `false` : un seul appui | `true` |
