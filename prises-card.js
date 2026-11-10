@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.3";
+const CARD_VERSION = "0.1.0-beta.4";
 
 const DEFAULTS = {
   title: "",
@@ -19,6 +19,7 @@ const DEFAULTS = {
   show_details: true,
   confirm: true,
   sort: "name",
+  layout: "list",
   max_power: 3680,
   theme: "v2",
   language: "auto",
@@ -53,15 +54,15 @@ const I18N = {
 const EDITOR_LABELS = {
   fr: { title: "Titre (Prises par défaut)", icon: "Icône", entities: "Prises (trouvées seules si vide)", areas: "Pièces affichées (toutes si vide)",
     exclude: "Prises à masquer", locked: "Prises verrouillées (pas de bouton)", show_off: "Afficher les prises éteintes",
-    show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce",
+    show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce", layout: "Affichage",
     max_power: "Puissance de la barre pleine (W)", theme: "Couleurs de la carte", language: "Langue" },
   en: { title: "Title (Plugs by default)", icon: "Icon", entities: "Plugs (found automatically if empty)", areas: "Rooms shown (all if empty)",
     exclude: "Plugs to hide", locked: "Locked plugs (no button)", show_off: "Show plugs that are off",
-    show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room",
+    show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room", layout: "Layout",
     max_power: "Power of a full bar (W)", theme: "Card colours", language: "Language" },
   pl: { title: "Tytuł (domyślnie Gniazdka)", icon: "Ikona", entities: "Gniazdka (wykrywane, jeśli puste)", areas: "Pokazane pomieszczenia (wszystkie, jeśli puste)",
     exclude: "Ukryte gniazdka", locked: "Zablokowane gniazdka (bez przycisku)", show_off: "Pokaż wyłączone gniazdka",
-    show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu",
+    show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu", layout: "Układ",
     max_power: "Moc pełnego paska (W)", theme: "Kolory karty", language: "Język" },
 };
 
@@ -126,6 +127,8 @@ class PrisesCard extends HTMLElement {
           { name: "show_details", selector: { boolean: {} } },
           { name: "confirm", selector: { boolean: {} } },
         ] },
+        { name: "layout", selector: { select: { mode: "dropdown", options: [
+          { value: "list", label: "Liste (mesures détaillées)" }, { value: "buttons", label: "Boutons (appui long : fiche)" }] } } },
         { type: "grid", name: "", schema: [
           { name: "sort", selector: { select: { mode: "dropdown", options: [
             { value: "name", label: "Nom" }, { value: "power", label: "Puissance (la plus forte en premier)" }] } } },
@@ -182,9 +185,9 @@ class PrisesCard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._collapsed = new Set(store.get("prises-card:collapsed", []));
     this.shadowRoot.addEventListener("click", (ev) => {
+      if (this._held) { this._held = false; return; } // appui long : la fiche est déjà ouverte
       const el = ev.target.closest?.("[data-act]");
       if (!el) return;
-      if (this._held) { this._held = false; return; } // appui long : la fiche est déjà ouverte
       const { act, id } = el.dataset;
       if (act === "toggle") this._toggle(id);
       else if (act === "info") this._moreInfo(id);
@@ -196,14 +199,14 @@ class PrisesCard extends HTMLElement {
     });
     // appui long sur une prise (non verrouillée) : fiche de Home Assistant
     this.shadowRoot.addEventListener("pointerdown", (ev) => {
-      const el = ev.target.closest?.('[data-act="toggle"]');
+      const el = ev.target.closest?.("[data-hold]");
       clearTimeout(this._holdTimer);
       this._held = false;
       if (!el || ev.target.closest(".pc-w")) return;
-      this._holdTimer = setTimeout(() => { this._held = true; this._disarm(); this._moreInfo(el.dataset.id); }, 550);
+      this._holdTimer = setTimeout(() => { this._held = true; this._disarm(); this._moreInfo(el.dataset.hold); }, 550);
     });
     for (const t of ["pointerup", "pointercancel", "pointerleave"]) this.shadowRoot.addEventListener(t, () => clearTimeout(this._holdTimer), true);
-    this.shadowRoot.addEventListener("contextmenu", (ev) => { if (ev.target.closest?.('[data-act="toggle"]')) ev.preventDefault(); });
+    this.shadowRoot.addEventListener("contextmenu", (ev) => { if (ev.target.closest?.("[data-hold]")) ev.preventDefault(); });
     this.shadowRoot.addEventListener("keydown", (ev) => {
       if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches?.("[data-act]:not(button)")) { ev.preventDefault(); ev.target.click(); }
     });
@@ -426,8 +429,34 @@ class PrisesCard extends HTMLElement {
         ${watts.length ? `<span class="pc-rw">${esc(this._w(total))}</span>` : ""}
         <ha-icon class="pc-chev" icon="${closed ? "mdi:chevron-down" : "mdi:chevron-up"}"></ha-icon>
       </div>
-      ${closed ? "" : `<div class="pc-list">${list.map((p) => this._plug(p)).join("")}</div>`}
+      ${closed ? "" : c.layout === "buttons"
+        ? `<div class="pc-grid">${list.map((p) => this._tile(p)).join("")}</div>`
+        : `<div class="pc-list">${list.map((p) => this._plug(p)).join("")}</div>`}
     </section>`;
+  }
+
+  /** Affichage « boutons » : appui puis second appui pour valider ; appui long : fiche (historique pour une prise verrouillée). */
+  _tile(p) {
+    const T = this._t(), c = this._config;
+    const s = this._hass.states[p.id];
+    const on = s.state === "on", off = s.state === "off";
+    const w = this._watts(p), kwh = this._kwh(p);
+    const armed = this._armed === p.id;
+    const max = Math.max(100, Number(c.max_power) || 3680);
+    const level = w === null ? "" : w >= max * 0.55 ? "bad" : w >= max * 0.15 ? "warn" : "ok";
+    const usable = !p.locked && (on || off);
+    const main = armed ? (on ? T.confirm_off : T.confirm_on) : on ? (w !== null ? this._w(w) : T.on) : off ? T.off : T.unavailable;
+    const sub = kwh !== null ? `${this._n(kwh, kwh < 10 ? 2 : 1)} kWh${p.today ? ` ${T.today}` : ""}` : "";
+    const hold = p.locked ? p.power : p.id;
+    const icon = p.icon || s.attributes?.icon || "mdi:power-socket-fr";
+    const attrs = usable ? ` data-act="toggle" data-id="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : p.locked ? ` title="${esc(T.locked)}"` : "";
+    return `<div class="pc-bt pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""} ${level}"${attrs}${hold ? ` data-hold="${esc(hold)}"` : ""}>
+      ${p.locked ? `<ha-icon class="pc-bt-lock" icon="mdi:lock"></ha-icon>` : ""}
+      <ha-icon icon="${esc(icon)}"></ha-icon>
+      <b>${esc(this._name(p))}</b>
+      <span class="pc-bt-v">${esc(main)}</span>
+      ${sub ? `<small>${esc(sub)}</small>` : ""}
+    </div>`;
   }
 
   _plug(p) {
@@ -457,7 +486,7 @@ class PrisesCard extends HTMLElement {
       : armed
         ? `<span class="pc-confirm${on ? " off" : " on"}">${esc(on ? T.confirm_off : T.confirm_on)}</span>`
         : `<span class="pc-sw${on ? " on" : ""}" aria-hidden="true"><i></i></span>`;
-    const tile = usable ? ` data-act="toggle" data-id="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : "";
+    const tile = usable ? ` data-act="toggle" data-id="${esc(p.id)}" data-hold="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : "";
 
     return `<div class="pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""} ${level}"${tile}>
       <div class="pc-row">
@@ -546,6 +575,20 @@ button:focus-visible, [role=button]:focus-visible { outline: 2px solid var(--med
 .pc-lock ha-icon { --mdc-icon-size: 18px; color: var(--med-muted); }
 .pc-bar { height: 6px; border-radius: 4px; background: color-mix(in srgb, var(--med-text) 12%, transparent); overflow: hidden; margin: 8px 0 2px 48px; }
 .pc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--lvl); }
+.pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 6px; }
+.pc-bt { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center;
+  min-height: 100px; padding: 12px 8px; border: 1px solid var(--med-line); }
+.pc-bt > ha-icon { --mdc-icon-size: 26px; color: var(--med-muted); }
+.pc-bt.on > ha-icon { color: var(--med-accent); }
+.pc-bt b { font-size: .84rem; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.pc-bt-v { font-size: .8rem; font-weight: 700; color: var(--med-muted); }
+.pc-bt.on .pc-bt-v { color: var(--med-text); }
+.pc-bt.on.warn .pc-bt-v { color: var(--pc-warn); } .pc-bt.on.bad .pc-bt-v { color: var(--pc-bad); }
+.pc-bt.armed .pc-bt-v { color: var(--arm); animation: pc-pulse-t 1s ease-in-out infinite; }
+@keyframes pc-pulse-t { 50% { opacity: .55; } }
+.pc-bt small { font-size: .7rem; color: var(--med-muted); }
+.pc-bt .pc-bt-lock { position: absolute; top: 8px; right: 8px; --mdc-icon-size: 14px; color: var(--med-muted); }
+.pc-bt.locked[data-hold] { cursor: pointer; }
 .empty { display: flex; flex-direction: column; gap: 6px; padding: 8px 4px 4px; font-size: .88rem; }
 .empty span { color: var(--med-muted); }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

@@ -86,6 +86,8 @@
         <button data-v="mobile">Téléphone</button><button data-v="large">Tablette / PC</button></div></div>
 
       <h2>Contenu</h2>
+      <div class="ctl"><div class="ctl-l">Affichage (<code>layout</code>)</div><div class="seg" data-key="layout">
+        <button data-v="list">Liste</button><button data-v="buttons">Boutons</button></div></div>
       <div class="ctl"><div class="ctl-l">Prises éteintes (<code>show_off</code>)</div><div class="seg" data-key="show_off">
         <button data-v="yes">Affichées</button><button data-v="no">Masquées</button></div></div>
       <div class="ctl"><div class="ctl-l">Tension et courant (<code>show_details</code>)</div><div class="seg" data-key="show_details">
@@ -142,7 +144,7 @@
     });
   }
 
-  const defaults = { page: "dark", theme: "v2", language: "fr", width: "mobile", show_off: "yes", show_details: "yes", sort: "name", confirm: "yes", scenario: "jour" };
+  const defaults = { page: "dark", theme: "v2", language: "fr", width: "mobile", layout: "list", show_off: "yes", show_details: "yes", sort: "name", confirm: "yes", scenario: "jour" };
   let state = { ...defaults };
   try { state = { ...defaults, ...JSON.parse(localStorage.getItem("prises-card-demo") || "{}") }; } catch (e) { /* ignoré */ }
 
@@ -204,6 +206,7 @@
     const c = { type: "custom:prises-card" };
     if (state.theme !== "v2") c.theme = state.theme;
     c.language = state.language;
+    if (state.layout === "buttons") c.layout = "buttons";
     if (state.show_off === "no") c.show_off = false;
     if (state.show_details === "no") c.show_details = false;
     if (state.sort === "power") c.sort = "power";

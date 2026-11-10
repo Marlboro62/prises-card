@@ -39,6 +39,7 @@
 - **Un appui sur la prise, un second pour valider** : le premier affiche « Allumer ? » ou « Éteindre ? », le second exécute, comme les boutons du NAS des [Cartes Serveur HA](https://github.com/Marlboro62/serveur-ha-card). Pas de congélateur coupé par erreur.
 - **Prises verrouillées** (box internet, congélateur…) : affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre depuis la carte.
 - **Historique** : un clic sur la puissance ouvre la fiche du capteur, avec son graphique.
+- **Deux affichages** : en **liste** (toutes les mesures et la barre de charge) ou en **boutons** (une tuile par prise, avec sa puissance et son énergie).
 - **Aucune dépendance** : pas de button-card ni de card-mod. Éditeur visuel compris.
 - **Français, anglais et polonais** (langue de Home Assistant, ou au choix).
 
@@ -46,9 +47,9 @@
 | --- | --- | --- |
 | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/journee.png" alt="Journée" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/forte-conso.png" alt="Forte consommation" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/clair.png" alt="Clair" width="300"> |
 
-| Second appui pour valider | Sur tablette ou PC |
-| --- | --- |
-| <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/confirmation.png" alt="Confirmation avant d'éteindre" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/tablette.png" alt="Deux colonnes sur tablette ou PC" width="460"> |
+| Affichage en boutons (`layout: buttons`) | Second appui pour valider | Sur tablette ou PC |
+| --- | --- | --- |
+| <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/boutons.png" alt="Affichage en boutons" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/confirmation.png" alt="Confirmation avant d'éteindre" width="300"><br><img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/boutons-confirmation.png" alt="Confirmation en boutons" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/tablette.png" alt="Deux colonnes sur tablette ou PC" width="460"> |
 
 *Aperçus réalisés avec la démo : pièces, prises et mesures fictives.*
 
@@ -82,7 +83,7 @@ C'est tout : la carte trouve vos prises, leurs pièces et leurs capteurs. Elle e
 | Clic sur la puissance | Fiche du capteur, avec son historique |
 | Clic sur le nom d'une pièce | Replier ou déplier la pièce |
 
-Une prise **verrouillée** ne réagit pas à l'appui ni à l'appui long : seule sa puissance reste cliquable, pour l'historique.
+Une prise **verrouillée** ne réagit pas à l'appui : seule sa puissance reste consultable (clic sur la puissance en liste, appui long en boutons), pour l'historique.
 
 ### Comment la carte trouve les prises
 
@@ -107,6 +108,7 @@ Si un interrupteur est pris pour une prise à tort, masquez-le avec `exclude`. S
 | `show_off` | Afficher les prises éteintes | `true` |
 | `show_details` | Afficher tension et courant | `true` |
 | `confirm` | Valider d'un second appui (allumer et éteindre) ; `false` : un seul appui | `true` |
+| `layout` | `list` (liste détaillée) ou `buttons` (une tuile par prise) | `list` |
 | `sort` | Ordre dans chaque pièce : `name` (nom) ou `power` (la plus forte en premier) | `name` |
 | `max_power` | Puissance d'une barre pleine, en W (la barre devient orange vers 15 %, rouge vers 55 %) | `3680` |
 | `theme` | `v2` (bleu nuit), `auto` (clair si Home Assistant est en mode clair) ou `ha` (thème de Home Assistant) | `v2` |
