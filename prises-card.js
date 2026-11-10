@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.6";
+const CARD_VERSION = "0.1.0-beta.7";
 
 const DEFAULTS = {
   title: "",
@@ -93,10 +93,13 @@ const fold = (w) => w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCa
 const shortName = (name, area, kinds) => {
   const words = String(name).split(/\s+/).filter(Boolean);
   const keep = words.map(() => true);
-  const areaW = String(area || "").split(/\s+/).map(fold).filter(Boolean);
-  if (areaW.length) {
+  // la pièce entière, puis chacune de ses parties (« Salle de bain & WC » → « Salle de bain », « WC »)
+  const areas = [String(area || ""), ...String(area || "").split(/\s*(?:&|\/|\+|,|\bet\b|\band\b|\bi\b)\s*/i)];
+  for (const part of areas) {
+    const areaW = part.split(/\s+/).map(fold).filter(Boolean);
+    if (!areaW.length) continue;
     for (let i = 0; i + areaW.length <= words.length; i++) {
-      if (areaW.every((a, j) => fold(words[i + j]) === a)) for (let j = 0; j < areaW.length; j++) keep[i + j] = false;
+      if (areaW.every((a, j) => keep[i + j] && fold(words[i + j]) === a)) for (let j = 0; j < areaW.length; j++) keep[i + j] = false;
     }
   }
   words.forEach((w, i) => { if (kinds.has(fold(w))) keep[i] = false; });
@@ -422,16 +425,25 @@ class PrisesCard extends HTMLElement {
       ${watts.length ? `<div class="pc-total" title="${esc(T.total)}"><ha-icon icon="mdi:flash"></ha-icon><b>${esc(this._w(total))}</b></div>` : ""}
     </header>`;
     const body = shown.length
-      ? rooms.map((r) => this._room(r)).join("")
+      ? (() => {
+        // une seule pièce : pas de cadre de pièce, le titre de la carte suffit
+        const filled = rooms.filter((r) => c.show_off || r.plugs.some((p) => this._hass.states[p.id].state === "on"));
+        return filled.length === 1 ? this._room(filled[0], true) : rooms.map((r) => this._room(r)).join("");
+      })()
       : `<div class="empty"><b>${esc(T.none)}</b><span>${esc(T.none_hint)}</span></div>`;
     this.shadowRoot.innerHTML = `${STYLE}<ha-card class="${this._themeClass()}">${head}<div class="pc-rooms">${body}</div></ha-card>`;
   }
 
-  _room(r) {
+  _room(r, solo = false) {
     const T = this._t(), c = this._config;
     const on = r.plugs.filter((p) => this._hass.states[p.id].state === "on");
     const list = c.show_off ? r.plugs : on;
     if (!list.length) return "";
+    if (solo) {
+      return c.layout === "buttons"
+        ? `<div class="pc-grid pc-solo">${list.map((p) => this._tile(p)).join("")}</div>`
+        : `<div class="pc-list pc-solo">${list.map((p) => this._plug(p)).join("")}</div>`;
+    }
     const key = r.area || "_other";
     const closed = this._collapsed.has(key);
     const watts = r.plugs.map((p) => this._watts(p)).filter((w) => w !== null);
@@ -592,6 +604,7 @@ ha-card.light .pc-plug, ha-card.th-ha.light .pc-plug { --heat: hsl(var(--h, 120)
 .pc-bar { height: 6px; border-radius: 4px; background: color-mix(in srgb, var(--med-text) 12%, transparent); overflow: hidden; margin: 8px 0 2px 48px; }
 .pc-plug.heat .pc-w { color: var(--heat); }
 .pc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--heat); }
+.pc-solo { margin-top: 0; }
 .pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 6px; }
 .pc-bt { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center;
   min-height: 100px; padding: 12px 8px; border: 1px solid var(--med-line); }
