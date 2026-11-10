@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.8";
+const CARD_VERSION = "0.1.0-beta.9";
 
 const DEFAULTS = {
   title: "",
@@ -194,7 +194,7 @@ class PrisesCard extends HTMLElement {
   }
 
   getGridOptions() {
-    return { columns: 12, rows: "auto", min_columns: 6 };
+    return { columns: "full", rows: "auto", min_columns: 6 };
   }
 
   disconnectedCallback() {
