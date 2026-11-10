@@ -92,7 +92,7 @@
         <button data-v="yes">Affichés</button><button data-v="no">Masqués</button></div></div>
       <div class="ctl"><div class="ctl-l">Ordre (<code>sort</code>)</div><div class="seg" data-key="sort">
         <button data-v="name">Nom</button><button data-v="power">Puissance</button></div></div>
-      <div class="ctl"><div class="ctl-l">Confirmer avant d'éteindre (<code>confirm_off</code>)</div><div class="seg" data-key="confirm_off">
+      <div class="ctl"><div class="ctl-l">Valider d'un second appui (<code>confirm</code>)</div><div class="seg" data-key="confirm">
         <button data-v="yes">Oui</button><button data-v="no">Non</button></div></div>
 
       <h2>Situation</h2>
@@ -102,7 +102,7 @@
 
     <main class="stage">
       <div class="frame" id="frame"></div>
-      <p class="hint">La carte réagit comme dans Home Assistant : allumez une prise d'un clic, éteignez-la en deux clics (« Éteindre ? »), cliquez sur une puissance pour son historique. Le congélateur et la box internet sont verrouillés. Rien n'est envoyé : tout se passe dans la page.</p>
+      <p class="hint">La carte réagit comme dans Home Assistant : appuyez sur une prise (« Allumer ? » ou « Éteindre ? »), puis une seconde fois pour valider ; appui long pour sa fiche ; clic sur une puissance pour son historique. Le congélateur et la box internet sont verrouillés : rien ne permet de les couper. Rien n'est envoyé : tout se passe dans la page.</p>
       <section class="panel">
         <div class="yaml-h"><h2>Configuration</h2><button class="copy" id="copy">Copier</button></div>
         <pre id="yaml"></pre>
@@ -142,7 +142,7 @@
     });
   }
 
-  const defaults = { page: "dark", theme: "v2", language: "fr", width: "mobile", show_off: "yes", show_details: "yes", sort: "name", confirm_off: "yes", scenario: "jour" };
+  const defaults = { page: "dark", theme: "v2", language: "fr", width: "mobile", show_off: "yes", show_details: "yes", sort: "name", confirm: "yes", scenario: "jour" };
   let state = { ...defaults };
   try { state = { ...defaults, ...JSON.parse(localStorage.getItem("prises-card-demo") || "{}") }; } catch (e) { /* ignoré */ }
 
@@ -207,7 +207,7 @@
     if (state.show_off === "no") c.show_off = false;
     if (state.show_details === "no") c.show_details = false;
     if (state.sort === "power") c.sort = "power";
-    if (state.confirm_off === "no") c.confirm_off = false;
+    if (state.confirm === "no") c.confirm = false;
     c.locked = LOCKED;
     return c;
   }

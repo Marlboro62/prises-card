@@ -2,11 +2,11 @@
  * Carte Prises — custom:prises-card
  *
  * Prises connectées de Home Assistant rangées par pièce, dans le style des cartes MyElectricalData :
- * marche / arrêt (arrêt confirmé), puissance instantanée, énergie consommée, tension et courant
+ * marche / arrêt d'un appui sur la prise, validé par un second appui, puissance instantanée, énergie consommée, tension et courant
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.1";
+const CARD_VERSION = "0.1.0-beta.2";
 
 const DEFAULTS = {
   title: "",
@@ -17,7 +17,7 @@ const DEFAULTS = {
   locked: [],
   show_off: true,
   show_details: true,
-  confirm_off: true,
+  confirm: true,
   sort: "name",
   max_power: 3680,
   theme: "v2",
@@ -30,22 +30,22 @@ const I18N = {
   fr: {
     title: "Prises", off: "Éteinte", on: "Allumée", unavailable: "Indisponible",
     n_on: { one: "{n} prise allumée", other: "{n} prises allumées" }, none_on: "Toutes les prises sont éteintes",
-    other_room: "Autres prises", confirm: "Éteindre ?", locked: "Prise verrouillée", toggle: "Allumer ou éteindre",
+    other_room: "Autres prises", confirm_off: "Éteindre ?", confirm_on: "Allumer ?", locked: "Prise verrouillée", toggle: "Appuyer pour allumer ou éteindre, appui long pour la fiche",
     total: "Puissance totale", today: "aujourd'hui", collapse: "Replier ou déplier la pièce", history: "Historique",
     none: "Aucune prise trouvée", none_hint: "La carte cherche les interrupteurs de type prise ou qui mesurent une puissance. Vous pouvez aussi les lister avec l'option entities.",
   },
   en: {
     title: "Plugs", off: "Off", on: "On", unavailable: "Unavailable",
     n_on: { one: "{n} plug on", other: "{n} plugs on" }, none_on: "All plugs are off",
-    other_room: "Other plugs", confirm: "Turn off?", locked: "Locked plug", toggle: "Turn on or off",
+    other_room: "Other plugs", confirm_off: "Turn off?", confirm_on: "Turn on?", locked: "Locked plug", toggle: "Tap to turn on or off, long press for details",
     total: "Total power", today: "today", collapse: "Collapse or expand the room", history: "History",
     none: "No plugs found", none_hint: "The card looks for outlet switches or switches that measure power. You can also list them with the entities option.",
   },
   pl: {
     title: "Gniazdka", off: "Wyłączone", on: "Włączone", unavailable: "Niedostępne",
     n_on: { one: "{n} gniazdko włączone", few: "{n} gniazdka włączone", many: "{n} gniazdek włączonych", other: "{n} gniazdek włączonych" },
-    none_on: "Wszystkie gniazdka wyłączone", other_room: "Inne gniazdka", confirm: "Wyłączyć?", locked: "Gniazdko zablokowane",
-    toggle: "Włącz lub wyłącz", total: "Moc łączna", today: "dziś", collapse: "Zwiń lub rozwiń pomieszczenie", history: "Historia",
+    none_on: "Wszystkie gniazdka wyłączone", other_room: "Inne gniazdka", confirm_off: "Wyłączyć?", confirm_on: "Włączyć?", locked: "Gniazdko zablokowane",
+    toggle: "Dotknij, aby włączyć lub wyłączyć; przytrzymaj, aby zobaczyć szczegóły", total: "Moc łączna", today: "dziś", collapse: "Zwiń lub rozwiń pomieszczenie", history: "Historia",
     none: "Nie znaleziono gniazdek", none_hint: "Karta szuka przełączników typu gniazdko lub mierzących moc. Możesz też podać je w opcji entities.",
   },
 };
@@ -53,15 +53,15 @@ const I18N = {
 const EDITOR_LABELS = {
   fr: { title: "Titre (Prises par défaut)", icon: "Icône", entities: "Prises (trouvées seules si vide)", areas: "Pièces affichées (toutes si vide)",
     exclude: "Prises à masquer", locked: "Prises verrouillées (pas de bouton)", show_off: "Afficher les prises éteintes",
-    show_details: "Afficher tension et courant", confirm_off: "Confirmer avant d'éteindre", sort: "Ordre dans chaque pièce",
+    show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce",
     max_power: "Puissance de la barre pleine (W)", theme: "Couleurs de la carte", language: "Langue" },
   en: { title: "Title (Plugs by default)", icon: "Icon", entities: "Plugs (found automatically if empty)", areas: "Rooms shown (all if empty)",
     exclude: "Plugs to hide", locked: "Locked plugs (no button)", show_off: "Show plugs that are off",
-    show_details: "Show voltage and current", confirm_off: "Confirm before turning off", sort: "Order in each room",
+    show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room",
     max_power: "Power of a full bar (W)", theme: "Card colours", language: "Language" },
   pl: { title: "Tytuł (domyślnie Gniazdka)", icon: "Ikona", entities: "Gniazdka (wykrywane, jeśli puste)", areas: "Pokazane pomieszczenia (wszystkie, jeśli puste)",
     exclude: "Ukryte gniazdka", locked: "Zablokowane gniazdka (bez przycisku)", show_off: "Pokaż wyłączone gniazdka",
-    show_details: "Pokaż napięcie i prąd", confirm_off: "Potwierdź przed wyłączeniem", sort: "Kolejność w pomieszczeniu",
+    show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu",
     max_power: "Moc pełnego paska (W)", theme: "Kolory karty", language: "Język" },
 };
 
@@ -100,7 +100,7 @@ class PrisesCard extends HTMLElement {
         { type: "grid", name: "", schema: [
           { name: "show_off", selector: { boolean: {} } },
           { name: "show_details", selector: { boolean: {} } },
-          { name: "confirm_off", selector: { boolean: {} } },
+          { name: "confirm", selector: { boolean: {} } },
         ] },
         { type: "grid", name: "", schema: [
           { name: "sort", selector: { select: { mode: "dropdown", options: [
@@ -124,6 +124,8 @@ class PrisesCard extends HTMLElement {
 
   setConfig(config) {
     this._config = { ...DEFAULTS, ...(config || {}) };
+    // ancienne option de la 0.1.0-beta.1
+    if (config?.confirm === undefined && config?.confirm_off !== undefined) this._config.confirm = !!config.confirm_off;
     for (const k of ["entities", "areas", "exclude", "locked"]) {
       const v = this._config[k];
       this._config[k] = Array.isArray(v) ? v : v ? [v] : [];
@@ -158,6 +160,7 @@ class PrisesCard extends HTMLElement {
     this.shadowRoot.addEventListener("click", (ev) => {
       const el = ev.target.closest?.("[data-act]");
       if (!el) return;
+      if (this._held) { this._held = false; return; } // appui long : la fiche est déjà ouverte
       const { act, id } = el.dataset;
       if (act === "toggle") this._toggle(id);
       else if (act === "info") this._moreInfo(id);
@@ -167,16 +170,27 @@ class PrisesCard extends HTMLElement {
         this._sig = null; this._render();
       }
     });
+    // appui long sur une prise (non verrouillée) : fiche de Home Assistant
+    this.shadowRoot.addEventListener("pointerdown", (ev) => {
+      const el = ev.target.closest?.('[data-act="toggle"]');
+      clearTimeout(this._holdTimer);
+      this._held = false;
+      if (!el || ev.target.closest(".pc-w")) return;
+      this._holdTimer = setTimeout(() => { this._held = true; this._disarm(); this._moreInfo(el.dataset.id); }, 550);
+    });
+    for (const t of ["pointerup", "pointercancel", "pointerleave"]) this.shadowRoot.addEventListener(t, () => clearTimeout(this._holdTimer), true);
+    this.shadowRoot.addEventListener("contextmenu", (ev) => { if (ev.target.closest?.('[data-act="toggle"]')) ev.preventDefault(); });
     this.shadowRoot.addEventListener("keydown", (ev) => {
       if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches?.("[data-act]:not(button)")) { ev.preventDefault(); ev.target.click(); }
     });
   }
 
-  /** Allumer d'un clic ; éteindre en deux clics (confirm_off), pour ne pas couper un congélateur par erreur. */
+  /** Un appui sur la prise demande « Allumer ? » ou « Éteindre ? », le second appui valide (option confirm). */
   _toggle(id) {
-    const on = this._hass.states[id]?.state === "on";
-    if (!on) { this._disarm(); this._call("switch", "turn_on", { entity_id: id }); return; }
-    if (this._config.confirm_off && this._armed !== id) {
+    const st = this._hass.states[id]?.state;
+    if (st !== "on" && st !== "off") return;
+    const on = st === "on";
+    if (this._config.confirm && this._armed !== id) {
       this._armed = id;
       clearTimeout(this._armTimer);
       this._armTimer = setTimeout(() => this._disarm(), 4000);
@@ -184,7 +198,7 @@ class PrisesCard extends HTMLElement {
       return;
     }
     this._disarm();
-    this._call("switch", "turn_off", { entity_id: id });
+    this._call("switch", on ? "turn_off" : "turn_on", { entity_id: id });
   }
 
   _disarm() {
@@ -416,16 +430,19 @@ class PrisesCard extends HTMLElement {
     if (c.show_details && on && amp !== null) parts.push(`${this._n(amp, 2)} A`);
     const icon = p.icon || s.attributes?.icon || (on ? "mdi:power-socket-fr" : "mdi:power-socket-fr");
 
+    // verrouillée : rien ne permet de l'allumer ou de l'éteindre depuis la carte (pas de fiche de l'interrupteur)
+    const usable = !p.locked && (on || off);
     const ctrl = p.locked
       ? `<span class="pc-lock" title="${esc(T.locked)}"><ha-icon icon="mdi:lock"></ha-icon></span>`
       : armed
-        ? `<button class="pc-confirm" data-act="toggle" data-id="${esc(p.id)}">${esc(T.confirm)}</button>`
-        : `<button class="pc-sw${on ? " on" : ""}" data-act="toggle" data-id="${esc(p.id)}" role="switch" aria-checked="${on}" aria-label="${esc(T.toggle)}" ${on || off ? "" : "disabled"}><i></i></button>`;
+        ? `<span class="pc-confirm${on ? " off" : " on"}">${esc(on ? T.confirm_off : T.confirm_on)}</span>`
+        : `<span class="pc-sw${on ? " on" : ""}" aria-hidden="true"><i></i></span>`;
+    const tile = usable ? ` data-act="toggle" data-id="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : "";
 
-    return `<div class="pc-plug${on ? " on" : ""}${on || off ? "" : " na"} ${level}">
+    return `<div class="pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""} ${level}"${tile}>
       <div class="pc-row">
         <span class="pc-ico"><ha-icon icon="${esc(icon)}"></ha-icon></span>
-        <div class="pc-name" data-act="info" data-id="${esc(p.id)}" role="button" tabindex="0">
+        <div class="pc-name">
           <b>${esc(this._name(p))}</b>
           <span>${p.power ? `<em class="pc-w" data-act="info" data-id="${esc(p.power)}" title="${esc(T.history)}">${esc(main)}</em>` : `<em>${esc(main)}</em>`}${parts.length ? ` · ${esc(parts.join(" · "))}` : ""}</span>
         </div>
@@ -485,7 +502,11 @@ button:focus-visible, [role=button]:focus-visible { outline: 2px solid var(--med
 .pc-ico ha-icon { --mdc-icon-size: 21px; color: var(--med-muted); }
 .pc-plug.on .pc-ico { background: color-mix(in srgb, var(--med-accent) 24%, transparent); }
 .pc-plug.on .pc-ico ha-icon { color: var(--med-accent); }
-.pc-name { flex: 1; min-width: 0; display: flex; flex-direction: column; cursor: pointer; border-radius: 8px; }
+.pc-plug.tap { cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: border-color .2s; }
+.pc-plug.tap:hover { border-color: var(--med-line); }
+.pc-plug:focus-visible { outline: 2px solid var(--med-accent); outline-offset: 2px; }
+.pc-plug.armed { border-color: var(--arm) !important; box-shadow: 0 0 0 1px var(--arm) inset; }
+.pc-name { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .pc-name b { font-size: .88rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-name span { font-size: .74rem; color: var(--med-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pc-name em { font-style: normal; }
@@ -496,10 +517,11 @@ button:focus-visible, [role=button]:focus-visible { outline: 2px solid var(--med
 .pc-sw i { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
 .pc-sw.on { background: var(--med-accent); }
 .pc-sw.on i { transform: translateX(18px); }
-.pc-sw:disabled { cursor: default; }
-.pc-confirm { border-radius: 999px; border: 1px solid var(--pc-bad); background: color-mix(in srgb, var(--pc-bad) 15%, transparent); color: var(--pc-bad);
-  padding: 3px 10px; font-size: .76rem; font-weight: 700; flex: none; animation: pc-pulse 1s ease-in-out infinite; }
-@keyframes pc-pulse { 50% { background: color-mix(in srgb, var(--pc-bad) 30%, transparent); } }
+.pc-plug { --arm: var(--pc-bad); }
+.pc-plug.armed:not(.on) { --arm: var(--pc-ok); }
+.pc-confirm { border-radius: 999px; border: 1px solid var(--arm); background: color-mix(in srgb, var(--arm) 15%, transparent); color: var(--arm);
+  padding: 3px 10px; font-size: .76rem; font-weight: 700; flex: none; white-space: nowrap; animation: pc-pulse 1s ease-in-out infinite; }
+@keyframes pc-pulse { 50% { background: color-mix(in srgb, var(--arm) 30%, transparent); } }
 .pc-lock { width: 42px; display: grid; place-items: center; flex: none; }
 .pc-lock ha-icon { --mdc-icon-size: 18px; color: var(--med-muted); }
 .pc-bar { height: 6px; border-radius: 4px; background: color-mix(in srgb, var(--med-text) 12%, transparent); overflow: hidden; margin: 8px 0 2px 48px; }

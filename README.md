@@ -36,8 +36,8 @@
 - **Prises classiques et prises qui mesurent** : une prise simple affiche Allumée / Éteinte ; une prise avec mesures affiche aussi sa **puissance** (W), son **énergie** consommée (kWh, celle du jour si elle existe), sa **tension** (V) et son **courant** (A).
 - **Puissance totale** en haut de la carte, et par pièce.
 - **Barre de charge** sous chaque prise allumée : verte, orange puis rouge selon la puissance.
-- **Éteindre en deux clics** : le premier affiche « Éteindre ? », le second coupe. Pas de congélateur éteint par erreur.
-- **Prises verrouillées** (box internet, congélateur…) : affichées avec leurs mesures, sans bouton.
+- **Un appui sur la prise, un second pour valider** : le premier affiche « Allumer ? » ou « Éteindre ? », le second exécute, comme les boutons du NAS des [Cartes Serveur HA](https://github.com/Marlboro62/serveur-ha-card). Pas de congélateur coupé par erreur.
+- **Prises verrouillées** (box internet, congélateur…) : affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre depuis la carte.
 - **Historique** : un clic sur la puissance ouvre la fiche du capteur, avec son graphique.
 - **Aucune dépendance** : pas de button-card ni de card-mod. Éditeur visuel compris.
 - **Français, anglais et polonais** (langue de Home Assistant, ou au choix).
@@ -46,13 +46,13 @@
 | --- | --- | --- |
 | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/journee.png" alt="Journée" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/forte-conso.png" alt="Forte consommation" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/clair.png" alt="Clair" width="300"> |
 
-| Éteindre en deux clics | Sur tablette ou PC |
+| Second appui pour valider | Sur tablette ou PC |
 | --- | --- |
 | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/confirmation.png" alt="Confirmation avant d'éteindre" width="300"> | <img src="https://raw.githubusercontent.com/Marlboro62/prises-card/main/images/tablette.png" alt="Deux colonnes sur tablette ou PC" width="460"> |
 
 *Aperçus réalisés avec la démo : pièces, prises et mesures fictives.*
 
-**[▶ Essayer la démo en ligne](https://marlboro62.github.io/prises-card/docs/demo.html)** : allumez, éteignez en deux clics, triez par puissance, en sombre ou clair, sur téléphone ou PC.
+**[▶ Essayer la démo en ligne](https://marlboro62.github.io/prises-card/docs/demo.html)** : allumez et éteignez (appui puis validation), triez par puissance, en sombre ou clair, sur téléphone ou PC.
 
 ## Installation
 
@@ -73,6 +73,16 @@ type: custom:prises-card
 ```
 
 C'est tout : la carte trouve vos prises, leurs pièces et leurs capteurs. Elle est aussi dans la liste des cartes (**Prises**), avec un éditeur visuel.
+
+| Geste | Effet |
+| --- | --- |
+| Appui sur la prise | « Allumer ? » ou « Éteindre ? » (4 secondes pour valider) |
+| Second appui | Allume ou éteint |
+| Appui long sur la prise | Fiche de Home Assistant |
+| Clic sur la puissance | Fiche du capteur, avec son historique |
+| Clic sur le nom d'une pièce | Replier ou déplier la pièce |
+
+Une prise **verrouillée** ne réagit pas à l'appui ni à l'appui long : seule sa puissance reste cliquable, pour l'historique.
 
 ### Comment la carte trouve les prises
 
@@ -95,7 +105,7 @@ Si un interrupteur est pris pour une prise à tort, masquez-le avec `exclude`. S
 | `locked` | Prises sans bouton marche / arrêt | aucune |
 | `show_off` | Afficher les prises éteintes | `true` |
 | `show_details` | Afficher tension et courant | `true` |
-| `confirm_off` | Demander un second clic avant d'éteindre | `true` |
+| `confirm` | Valider d'un second appui (allumer et éteindre) ; `false` : un seul appui | `true` |
 | `sort` | Ordre dans chaque pièce : `name` (nom) ou `power` (la plus forte en premier) | `name` |
 | `max_power` | Puissance d'une barre pleine, en W (la barre devient orange vers 15 %, rouge vers 55 %) | `3680` |
 | `theme` | `v2` (bleu nuit), `auto` (clair si Home Assistant est en mode clair) ou `ha` (thème de Home Assistant) | `v2` |
@@ -131,7 +141,7 @@ Clés d'une prise : `entity`, `name`, `icon`, `power`, `energy`, `voltage`, `cur
 
 ### 0.1.0
 
-- ✨ Première version : prises par pièce, puissance, énergie, tension et courant, puissance totale, barre de charge, arrêt en deux clics, prises verrouillées, tri par puissance, thèmes bleu nuit, clair et Home Assistant, français, anglais et polonais.
+- ✨ Première version : prises par pièce, puissance, énergie, tension et courant, puissance totale, barre de charge, appui sur la prise validé par un second appui, prises verrouillées, tri par puissance, thèmes bleu nuit, clair et Home Assistant, français, anglais et polonais.
 
 Détail de chaque version : [releases](https://github.com/Marlboro62/prises-card/releases).
 
