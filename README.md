@@ -90,6 +90,7 @@ Une prise **verrouillée** ne réagit pas à l'appui ni à l'appui long : seule 
 - Les **capteurs du même appareil** sont associés tout seuls : puissance (W ou kW), énergie (kWh ou Wh ; celle dont le nom contient « today », « aujourd'hui », « daily »… est préférée et marquée **aujourd'hui**), tension, courant.
 - Les interrupteurs **masqués** et ceux de réglage (catégorie « configuration » ou « diagnostic », comme le verrouillage enfant ou la LED) sont ignorés.
 - Une prise sans pièce apparaît dans **Autres prises**, en bas de la carte.
+- Les noms sont raccourcis : le nom de la pièce et le mot « Prise » sont retirés (« Prise Machine à laver » devient « Machine à laver »). Si rien ne reste, le nom complet est gardé ; `name` dans `entities` permet de choisir le nom.
 
 Si un interrupteur est pris pour une prise à tort, masquez-le avec `exclude`. Si une prise n'est pas trouvée, ou si ses capteurs sont sur un autre appareil, listez-la avec `entities`.
 
