@@ -35,7 +35,7 @@
 
 - **Prises classiques et prises qui mesurent** : une prise simple affiche Allumée / Éteinte ; une prise avec mesures affiche aussi sa **puissance** (W), son **énergie** consommée (kWh, celle du jour si elle existe), sa **tension** (V) et son **courant** (A).
 - **Puissance totale** en haut de la carte, et par pièce.
-- **Barre de charge** sous chaque prise allumée : verte, orange puis rouge selon la puissance.
+- **Couleur selon la consommation** : la barre de charge (en liste) et la tuile (en boutons) passent du **vert** au **jaune** puis au **rouge** selon la puissance, jusqu'à 2 500 W par défaut. Le seuil se règle pour toute la carte (`max_power`) ou prise par prise.
 - **Un appui sur la prise, un second pour valider** : le premier affiche « Allumer ? » ou « Éteindre ? », le second exécute, comme les boutons du NAS des [Cartes Serveur HA](https://github.com/Marlboro62/serveur-ha-card). Pas de congélateur coupé par erreur.
 - **Prises verrouillées** (box internet, congélateur…) : affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre depuis la carte.
 - **Historique** : un clic sur la puissance ouvre la fiche du capteur, avec son graphique.
@@ -110,7 +110,7 @@ Si un interrupteur est pris pour une prise à tort, masquez-le avec `exclude`. S
 | `confirm` | Valider d'un second appui (allumer et éteindre) ; `false` : un seul appui | `true` |
 | `layout` | `list` (liste détaillée) ou `buttons` (une tuile par prise) | `list` |
 | `sort` | Ordre dans chaque pièce : `name` (nom) ou `power` (la plus forte en premier) | `name` |
-| `max_power` | Puissance d'une barre pleine, en W (la barre devient orange vers 15 %, rouge vers 55 %) | `3680` |
+| `max_power` | Puissance du rouge, en W : vert à 0 W, jaune à mi-chemin, rouge à cette valeur (barre pleine). Une prise qui encaisse plus (radiateur, four) peut avoir la sienne | `2500` |
 | `theme` | `v2` (bleu nuit), `auto` (clair si Home Assistant est en mode clair) ou `ha` (thème de Home Assistant) | `v2` |
 | `language` | `auto`, `fr`, `en` ou `pl` | `auto` |
 
@@ -129,10 +129,11 @@ entities:
     locked: true
   - entity: switch.lave_vaisselle
     power: sensor.lave_vaisselle_power
+    max_power: 3000
 sort: power
 ```
 
-Clés d'une prise : `entity`, `name`, `icon`, `power`, `energy`, `voltage`, `current`, `locked`.
+Clés d'une prise : `entity`, `name`, `icon`, `power`, `energy`, `voltage`, `current`, `locked`, `max_power` (seuil du rouge pour cette prise seulement, par exemple `3500` pour un four).
 
 ### Bon à savoir
 

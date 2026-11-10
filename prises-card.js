@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.4";
+const CARD_VERSION = "0.1.0-beta.5";
 
 const DEFAULTS = {
   title: "",
@@ -20,7 +20,7 @@ const DEFAULTS = {
   confirm: true,
   sort: "name",
   layout: "list",
-  max_power: 3680,
+  max_power: 2500,
   theme: "v2",
   language: "auto",
 };
@@ -55,15 +55,15 @@ const EDITOR_LABELS = {
   fr: { title: "Titre (Prises par défaut)", icon: "Icône", entities: "Prises (trouvées seules si vide)", areas: "Pièces affichées (toutes si vide)",
     exclude: "Prises à masquer", locked: "Prises verrouillées (pas de bouton)", show_off: "Afficher les prises éteintes",
     show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce", layout: "Affichage",
-    max_power: "Puissance de la barre pleine (W)", theme: "Couleurs de la carte", language: "Langue" },
+    max_power: "Puissance du rouge (W) : vert à 0, rouge à cette valeur", theme: "Couleurs de la carte", language: "Langue" },
   en: { title: "Title (Plugs by default)", icon: "Icon", entities: "Plugs (found automatically if empty)", areas: "Rooms shown (all if empty)",
     exclude: "Plugs to hide", locked: "Locked plugs (no button)", show_off: "Show plugs that are off",
     show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room", layout: "Layout",
-    max_power: "Power of a full bar (W)", theme: "Card colours", language: "Language" },
+    max_power: "Red at this power (W): green at 0", theme: "Card colours", language: "Language" },
   pl: { title: "Tytuł (domyślnie Gniazdka)", icon: "Ikona", entities: "Gniazdka (wykrywane, jeśli puste)", areas: "Pokazane pomieszczenia (wszystkie, jeśli puste)",
     exclude: "Ukryte gniazdka", locked: "Zablokowane gniazdka (bez przycisku)", show_off: "Pokaż wyłączone gniazdka",
     show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu", layout: "Układ",
-    max_power: "Moc pełnego paska (W)", theme: "Kolory karty", language: "Język" },
+    max_power: "Moc koloru czerwonego (W): zielony przy 0", theme: "Kolory karty", language: "Język" },
 };
 
 const PLUG_NAME = /prise|plug|socket|outlet|steckdose|gniazd/i;
@@ -99,6 +99,9 @@ const store = {
   set(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } },
 };
 const num = (v) => { const n = Number.parseFloat(v); return Number.isFinite(n) ? n : null; };
+
+/** Teinte selon la puissance : 120 (vert) à 0 W, 60 (jaune) à mi-chemin, 0 (rouge) à max W et au-delà. */
+const heatHue = (w, max) => Math.round(120 * (1 - Math.min(1, Math.max(0, w) / max)));
 
 class PrisesCard extends HTMLElement {
   constructor() {
@@ -304,7 +307,7 @@ class PrisesCard extends HTMLElement {
       const dev = hass.entities?.[id]?.device_id;
       const s = (dev && sensors.get(dev)) || {};
       return { id, power: extra.power || s.power, energy: extra.energy || s.today || s.energy, today: !extra.energy && !!s.today,
-        voltage: extra.voltage || s.voltage, current: extra.current || s.current, name: extra.name, icon: extra.icon,
+        voltage: extra.voltage || s.voltage, current: extra.current || s.current, name: extra.name, icon: extra.icon, max: num(extra.max_power),
         locked: extra.locked ?? locked.has(id) };
     };
     if (c.entities.length) {
@@ -442,15 +445,15 @@ class PrisesCard extends HTMLElement {
     const on = s.state === "on", off = s.state === "off";
     const w = this._watts(p), kwh = this._kwh(p);
     const armed = this._armed === p.id;
-    const max = Math.max(100, Number(c.max_power) || 3680);
-    const level = w === null ? "" : w >= max * 0.55 ? "bad" : w >= max * 0.15 ? "warn" : "ok";
+    const max = Math.max(50, p.max || Number(c.max_power) || 2500);
+    const heat = on && w !== null ? ` style="--h:${heatHue(w, max)}"` : "";
     const usable = !p.locked && (on || off);
     const main = armed ? (on ? T.confirm_off : T.confirm_on) : on ? (w !== null ? this._w(w) : T.on) : off ? T.off : T.unavailable;
     const sub = kwh !== null ? `${this._n(kwh, kwh < 10 ? 2 : 1)} kWh${p.today ? ` ${T.today}` : ""}` : "";
     const hold = p.locked ? p.power : p.id;
     const icon = p.icon || s.attributes?.icon || "mdi:power-socket-fr";
     const attrs = usable ? ` data-act="toggle" data-id="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : p.locked ? ` title="${esc(T.locked)}"` : "";
-    return `<div class="pc-bt pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""} ${level}"${attrs}${hold ? ` data-hold="${esc(hold)}"` : ""}>
+    return `<div class="pc-bt pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""}${heat ? " heat" : ""}"${heat}${attrs}${hold ? ` data-hold="${esc(hold)}"` : ""}>
       ${p.locked ? `<ha-icon class="pc-bt-lock" icon="mdi:lock"></ha-icon>` : ""}
       <ha-icon icon="${esc(icon)}"></ha-icon>
       <b>${esc(this._name(p))}</b>
@@ -468,9 +471,9 @@ class PrisesCard extends HTMLElement {
     let amp = num(aSt?.state);
     if (amp !== null && aSt.attributes?.unit_of_measurement === "mA") amp /= 1000;
     const armed = this._armed === p.id;
-    const max = Math.max(100, Number(c.max_power) || 3680);
-    const level = w === null ? "" : w >= max * 0.55 ? "bad" : w >= max * 0.15 ? "warn" : "ok";
-    const bar = on && w !== null ? Math.min(100, Math.sqrt(Math.max(0, w) / max) * 100) : 0;
+    const max = Math.max(50, p.max || Number(c.max_power) || 2500);
+    const heat = on && w !== null ? ` style="--h:${heatHue(w, max)}"` : "";
+    const bar = on && w !== null ? Math.min(100, Math.max(w > 0 ? 3 : 0, (w / max) * 100)) : 0;
 
     const main = on ? (w !== null ? this._w(w) : T.on) : off ? T.off : T.unavailable;
     const parts = [];
@@ -488,7 +491,7 @@ class PrisesCard extends HTMLElement {
         : `<span class="pc-sw${on ? " on" : ""}" aria-hidden="true"><i></i></span>`;
     const tile = usable ? ` data-act="toggle" data-id="${esc(p.id)}" data-hold="${esc(p.id)}" role="switch" aria-checked="${on}" tabindex="0" title="${esc(T.toggle)}"` : "";
 
-    return `<div class="pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""} ${level}"${tile}>
+    return `<div class="pc-plug${on ? " on" : ""}${on || off ? "" : " na"}${usable ? " tap" : ""}${armed ? " armed" : ""}${p.locked ? " locked" : ""}${heat ? " heat" : ""}"${heat}${tile}>
       <div class="pc-row">
         <span class="pc-ico"><ha-icon icon="${esc(icon)}"></ha-icon></span>
         <div class="pc-name">
@@ -542,8 +545,10 @@ button:focus-visible, [role=button]:focus-visible { outline: 2px solid var(--med
 .pc-count + .pc-chev { margin-left: auto; }
 .pc-list { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 6px; align-items: start; }
 @container (min-width: 560px) { .pc-list { grid-template-columns: 1fr 1fr; } }
-.pc-plug { background: var(--med-surface); border-radius: 12px; padding: 8px 10px; border: 1px solid transparent; min-width: 0; --lvl: var(--pc-ok); }
-.pc-plug.warn { --lvl: var(--pc-warn); } .pc-plug.bad { --lvl: var(--pc-bad); }
+.pc-plug { background: var(--med-surface); border-radius: 12px; padding: 8px 10px; border: 1px solid transparent; min-width: 0;
+  /* --heat : du vert (0 W) au rouge (max_power), en continu */
+  --heat: hsl(var(--h, 120) 72% 52%); }
+ha-card.light .pc-plug, ha-card.th-ha.light .pc-plug { --heat: hsl(var(--h, 120) 70% 36%); }
 .pc-plug.on { border-color: color-mix(in srgb, var(--med-accent) 40%, transparent); background: color-mix(in srgb, var(--med-accent) 8%, var(--med-surface)); }
 .pc-plug.na { opacity: .55; }
 .pc-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -574,16 +579,19 @@ button:focus-visible, [role=button]:focus-visible { outline: 2px solid var(--med
 .pc-lock { width: 42px; display: grid; place-items: center; flex: none; }
 .pc-lock ha-icon { --mdc-icon-size: 18px; color: var(--med-muted); }
 .pc-bar { height: 6px; border-radius: 4px; background: color-mix(in srgb, var(--med-text) 12%, transparent); overflow: hidden; margin: 8px 0 2px 48px; }
-.pc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--lvl); }
+.pc-plug.heat .pc-w { color: var(--heat); }
+.pc-bar i { display: block; height: 100%; border-radius: 4px; background: var(--heat); }
 .pc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 6px; }
 .pc-bt { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; text-align: center;
   min-height: 100px; padding: 12px 8px; border: 1px solid var(--med-line); }
 .pc-bt > ha-icon { --mdc-icon-size: 26px; color: var(--med-muted); }
 .pc-bt.on > ha-icon { color: var(--med-accent); }
+.pc-bt.heat { border-color: color-mix(in srgb, var(--heat) 60%, transparent); background: color-mix(in srgb, var(--heat) 10%, var(--med-surface)); }
+.pc-bt.heat > ha-icon { color: var(--heat); }
 .pc-bt b { font-size: .84rem; font-weight: 600; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .pc-bt-v { font-size: .8rem; font-weight: 700; color: var(--med-muted); }
 .pc-bt.on .pc-bt-v { color: var(--med-text); }
-.pc-bt.on.warn .pc-bt-v { color: var(--pc-warn); } .pc-bt.on.bad .pc-bt-v { color: var(--pc-bad); }
+.pc-bt.heat .pc-bt-v { color: var(--heat); }
 .pc-bt.armed .pc-bt-v { color: var(--arm); animation: pc-pulse-t 1s ease-in-out infinite; }
 @keyframes pc-pulse-t { 50% { opacity: .55; } }
 .pc-bt small { font-size: .7rem; color: var(--med-muted); }
