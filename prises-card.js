@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.5";
+const CARD_VERSION = "0.1.0-beta.6";
 
 const DEFAULTS = {
   title: "",
@@ -55,17 +55,30 @@ const EDITOR_LABELS = {
   fr: { title: "Titre (Prises par défaut)", icon: "Icône", entities: "Prises (trouvées seules si vide)", areas: "Pièces affichées (toutes si vide)",
     exclude: "Prises à masquer", locked: "Prises verrouillées (pas de bouton)", show_off: "Afficher les prises éteintes",
     show_details: "Afficher tension et courant", confirm: "Valider d'un second appui", sort: "Ordre dans chaque pièce", layout: "Affichage",
-    max_power: "Puissance du rouge (W) : vert à 0, rouge à cette valeur", theme: "Couleurs de la carte", language: "Langue" },
+    max_power: "Seuil du rouge (W)", theme: "Couleurs de la carte", language: "Langue" },
   en: { title: "Title (Plugs by default)", icon: "Icon", entities: "Plugs (found automatically if empty)", areas: "Rooms shown (all if empty)",
     exclude: "Plugs to hide", locked: "Locked plugs (no button)", show_off: "Show plugs that are off",
     show_details: "Show voltage and current", confirm: "Confirm with a second tap", sort: "Order in each room", layout: "Layout",
-    max_power: "Red at this power (W): green at 0", theme: "Card colours", language: "Language" },
+    max_power: "Red threshold (W)", theme: "Card colours", language: "Language" },
   pl: { title: "Tytuł (domyślnie Gniazdka)", icon: "Ikona", entities: "Gniazdka (wykrywane, jeśli puste)", areas: "Pokazane pomieszczenia (wszystkie, jeśli puste)",
     exclude: "Ukryte gniazdka", locked: "Zablokowane gniazdka (bez przycisku)", show_off: "Pokaż wyłączone gniazdka",
     show_details: "Pokaż napięcie i prąd", confirm: "Potwierdź drugim dotknięciem", sort: "Kolejność w pomieszczeniu", layout: "Układ",
-    max_power: "Moc koloru czerwonego (W): zielony przy 0", theme: "Kolory karty", language: "Język" },
+    max_power: "Próg czerwieni (W)", theme: "Kolory karty", language: "Język" },
 };
 
+const EDITOR_HELP = {
+  fr: { max_power: "Vert à 0 W, jaune à mi-chemin, rouge à cette puissance. 2500 W par défaut.", sort: "Par défaut : par nom.",
+    layout: "Par défaut : liste.", theme: "Par défaut : bleu nuit.", language: "Par défaut : langue de Home Assistant.",
+    locked: "Affichées avec leurs mesures, sans aucun moyen de les allumer ou de les éteindre." },
+  en: { max_power: "Green at 0 W, yellow halfway, red at this power. 2500 W by default.", sort: "Default: by name.",
+    layout: "Default: list.", theme: "Default: night blue.", language: "Default: Home Assistant language.",
+    locked: "Shown with their measurements, with no way to turn them on or off." },
+  pl: { max_power: "Zielony przy 0 W, żółty w połowie, czerwony przy tej mocy. Domyślnie 2500 W.", sort: "Domyślnie: według nazwy.",
+    layout: "Domyślnie: lista.", theme: "Domyślnie: granatowy.", language: "Domyślnie: język Home Assistant.",
+    locked: "Pokazane z pomiarami, bez możliwości włączenia lub wyłączenia." },
+};
+/** Langue de l'interface pour l'éditeur (Home Assistant ne lui passe pas toujours hass). */
+const uiLang = () => String(document.querySelector("home-assistant")?.hass?.locale?.language || navigator.language || "fr").slice(0, 2);
 const PLUG_NAME = /prise|plug|socket|outlet|steckdose|gniazd/i;
 const TODAY = /today|aujourd|daily|journ|jour|dzis|dzi[sś]|heute/i;
 
@@ -130,13 +143,13 @@ class PrisesCard extends HTMLElement {
           { name: "show_details", selector: { boolean: {} } },
           { name: "confirm", selector: { boolean: {} } },
         ] },
-        { name: "layout", selector: { select: { mode: "dropdown", options: [
-          { value: "list", label: "Liste (mesures détaillées)" }, { value: "buttons", label: "Boutons (appui long : fiche)" }] } } },
         { type: "grid", name: "", schema: [
+          { name: "layout", selector: { select: { mode: "dropdown", options: [
+            { value: "list", label: "Liste" }, { value: "buttons", label: "Boutons" }] } } },
           { name: "sort", selector: { select: { mode: "dropdown", options: [
-            { value: "name", label: "Nom" }, { value: "power", label: "Puissance (la plus forte en premier)" }] } } },
-          { name: "max_power", selector: { number: { min: 100, max: 10000, step: 10, mode: "box", unit_of_measurement: "W" } } },
+            { value: "name", label: "Nom" }, { value: "power", label: "Puissance" }] } } },
         ] },
+        { name: "max_power", selector: { number: { min: 100, max: 10000, step: 50, mode: "box", unit_of_measurement: "W" } } },
         { name: "theme", selector: { select: { mode: "dropdown", options: [
           { value: "v2", label: "Bleu nuit (style MyElectricalData)" },
           { value: "auto", label: "Bleu nuit, clair si Home Assistant est en mode clair" },
@@ -145,10 +158,8 @@ class PrisesCard extends HTMLElement {
           { value: "auto", label: "Langue de Home Assistant" }, { value: "fr", label: "Français" },
           { value: "en", label: "English" }, { value: "pl", label: "Polski" }] } } },
       ],
-      computeLabel: (s, data, hass) => {
-        const lang = String(hass?.locale?.language || hass?.language || "fr").slice(0, 2);
-        return (EDITOR_LABELS[lang] || EDITOR_LABELS.fr)[s.name] || s.name;
-      },
+      computeLabel: (s) => (EDITOR_LABELS[uiLang()] || EDITOR_LABELS.fr)[s.name] || s.name,
+      computeHelper: (s) => (EDITOR_HELP[uiLang()] || EDITOR_HELP.fr)[s.name],
     };
   }
 
