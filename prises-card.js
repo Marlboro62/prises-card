@@ -6,7 +6,7 @@
  * pour les prises qui les mesurent. Sans configuration, la carte trouve seule les prises et leurs capteurs.
  */
 (() => {
-const CARD_VERSION = "0.1.0-beta.2";
+const CARD_VERSION = "0.1.0-beta.3";
 
 const DEFAULTS = {
   title: "",
@@ -69,6 +69,30 @@ const PLUG_NAME = /prise|plug|socket|outlet|steckdose|gniazd/i;
 const TODAY = /today|aujourd|daily|journ|jour|dzis|dzi[sś]|heute/i;
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+/**
+ * Nom court : sans le nom de la pièce ni le mot du type d'appareil, où qu'ils soient
+ * (« Lumière Salon Centre » dans la pièce Salon → « Centre »). Nom complet si rien ne reste.
+ */
+const KIND_WORDS = new Set(["prise", "prises", "plug", "plugs", "socket", "outlet", "gniazdko", "gniazdka", "steckdose"]);
+const LINK_WORDS = new Set(["de", "du", "des", "d", "la", "le", "les", "l", "of", "the", "w", "na"]);
+const fold = (w) => w.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const shortName = (name, area, kinds) => {
+  const words = String(name).split(/\s+/).filter(Boolean);
+  const keep = words.map(() => true);
+  const areaW = String(area || "").split(/\s+/).map(fold).filter(Boolean);
+  if (areaW.length) {
+    for (let i = 0; i + areaW.length <= words.length; i++) {
+      if (areaW.every((a, j) => fold(words[i + j]) === a)) for (let j = 0; j < areaW.length; j++) keep[i + j] = false;
+    }
+  }
+  words.forEach((w, i) => { if (kinds.has(fold(w))) keep[i] = false; });
+  let out = words.filter((w, i) => keep[i]);
+  while (out.length && LINK_WORDS.has(fold(out[0]))) out.shift();
+  while (out.length && LINK_WORDS.has(fold(out[out.length - 1]))) out.pop();
+  if (!out.length) return String(name);
+  const s = out.join(" ");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 const store = {
   get(k, d) { try { const v = JSON.parse(window.localStorage.getItem(k)); return v ?? d; } catch (e) { return d; } },
   set(k, v) { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } },
@@ -313,13 +337,9 @@ class PrisesCard extends HTMLElement {
     if (p.name) return p.name;
     const st = this._hass.states[p.id];
     const e = this._hass.entities?.[p.id];
-    let name = e?.name || st?.attributes?.friendly_name || this._hass.devices?.[e?.device_id]?.name_by_user || this._hass.devices?.[e?.device_id]?.name || p.id;
-    const area = this._hass.areas?.[this._areaOf(p.id)]?.name;
-    if (area && name.toLowerCase().startsWith(`${area.toLowerCase()} `) && name.length > area.length + 1) {
-      name = name.slice(area.length + 1);
-      name = name.charAt(0).toUpperCase() + name.slice(1);
-    }
-    return name;
+    const name = e?.name || st?.attributes?.friendly_name || this._hass.devices?.[e?.device_id]?.name_by_user || this._hass.devices?.[e?.device_id]?.name || p.id;
+    // sans le nom de la pièce ni le type d'appareil (« Lumière Salon Centre » → « Centre »)
+    return shortName(name, this._hass.areas?.[this._areaOf(p.id)]?.name, KIND_WORDS);
   }
 
   _rooms(plugs) {
