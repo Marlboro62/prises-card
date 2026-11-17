@@ -59,8 +59,14 @@
 
 ### Avec HACS
 
-1. Dans **Paramètres › Marketplace** (ou HACS avant Home Assistant 2026.11), menu **⋮** → **Dépôts personnalisés** : adresse `https://github.com/Marlboro62/prises-card`, type **Tableau de bord** (Dashboard).
+La carte fait partie du catalogue par défaut : aucun dépôt à ajouter.
+
+[![Ouvrir dans Home Assistant](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Marlboro62&repository=prises-card&category=plugin)
+
+1. Ouvrez **Paramètres › Marketplace** (ou HACS avant Home Assistant 2026.11), ou utilisez le bouton ci-dessus.
 2. Cherchez **Carte Prises**, téléchargez-la, puis rechargez la page (**Ctrl+F5**).
+
+Si la carte n'apparaît pas encore dans la recherche, ajoutez-la à la main : menu **⋮** → **Dépôts personnalisés**, adresse `https://github.com/Marlboro62/prises-card`, type **Tableau de bord** (Dashboard), puis reprenez l'étape 2.
 
 ### Manuellement
 
